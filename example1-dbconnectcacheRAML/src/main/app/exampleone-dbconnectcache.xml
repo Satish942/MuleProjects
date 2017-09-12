@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+    <http:listener-config name="tutorialsAtoZ_caching-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <apikit:config name="tutorialsAtoZ_caching-config" raml="tutorialsAtoZ_caching.raml" consoleEnabled="true" consolePath="console" doc:name="Router"/>
+    <db:mysql-config name="MySQL_Configuration" host="localhost" port="3306" user="root" password="Root12" database="tutorial" doc:name="MySQL Configuration"/>
+    <ee:object-store-caching-strategy name="Caching_Strategy" keyGenerationExpression="#[flowVars.userID]" doc:name="Caching Strategy">
+        <simple-text-file-store name="abcdef"/>
+    </ee:object-store-caching-strategy>
+    <flow name="get:/user/queryuser:tutorialsAtoZ_caching-config">
+        <http:listener config-ref="tutorialsAtoZ_caching-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
+        <logger message="Query parameter user_id = #[message.inboundProperties.'http.query.params'.user_id]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="userID" value="#[message.inboundProperties.'http.query.params'.user_id]" doc:name="Variable"/>
+        <flow-ref name="tutorialsAtoZ_caching_SubFlow" doc:name="tutorialsAtoZ_caching_SubFlow"/>
+        <logger message="payload - #[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <sub-flow name="tutorialsAtoZ_caching_SubFlow">
+        <ee:cache cachingStrategy-ref="Caching_Strategy" filterExpression="#[flowVars.user_id]" doc:name="Cache">
+            <logger message="SubFlow - variable user_id = #[flowVars.userID]" level="INFO" doc:name="Logger"/>
+            <db:select config-ref="MySQL_Configuration" doc:name="Database">
+                <db:parameterized-query><![CDATA[select * from tutorial.user where userID = #[flowVars.userID]]]></db:parameterized-query>
+            </db:select>
+            <logger message="SubFlow - DB query excuted and cached" level="INFO" doc:name="Logger"/>
+        </ee:cache>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+    </sub-flow>
+</mule>

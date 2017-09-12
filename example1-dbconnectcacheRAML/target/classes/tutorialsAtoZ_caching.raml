@@ -1,0 +1,15 @@
+#%RAML 0.8
+title: cache_REST_API
+version: 1.0
+baseUri: http://server/api/{version}
+/user:
+ /qeuryuser:
+  get:
+    description: query user object
+    queryParameters:
+      user_id:
+      type:
+    responses:
+      200:
+        body:
+          application/json          
